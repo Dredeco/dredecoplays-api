@@ -12,6 +12,18 @@ exports.list = async (req, res, next) => {
   }
 };
 
+exports.show = async (req, res, next) => {
+  try {
+    const user = await User.findByPk(req.params.id, {
+      attributes: { exclude: ['password'] },
+    });
+    if (!user) return res.status(404).json({ error: 'Usuário não encontrado.' });
+    res.json({ data: user });
+  } catch (err) {
+    next(err);
+  }
+};
+
 exports.create = async (req, res, next) => {
   try {
     const { name, email, password, role } = req.body;
@@ -26,8 +38,16 @@ exports.update = async (req, res, next) => {
   try {
     const user = await User.findByPk(req.params.id);
     if (!user) return res.status(404).json({ error: 'Usuário não encontrado.' });
-    const { name, email, password, role } = req.body;
-    await user.update({ name, email, password, role });
+
+    const updates = {};
+    if (req.body.name !== undefined) updates.name = req.body.name;
+    if (req.body.email !== undefined) updates.email = req.body.email;
+    if (req.body.role !== undefined) updates.role = req.body.role;
+    if (typeof req.body.password === 'string' && req.body.password.length > 0) {
+      updates.password = req.body.password;
+    }
+
+    await user.update(updates);
     res.json({ data: user.toSafeJSON() });
   } catch (err) {
     next(err);

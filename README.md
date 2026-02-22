@@ -30,11 +30,6 @@ npm run seed
 npm run dev
 ```
 
-## Credenciais Admin Padrão (após seed)
-
-- **Email:** admin@dredecoplays.com.br
-- **Senha:** Admin@123
-
 ## Endpoints da API
 
 ### Auth
