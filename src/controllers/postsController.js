@@ -123,8 +123,15 @@ exports.show = async (req, res, next) => {
 
 exports.create = async (req, res, next) => {
   try {
-    const { title, excerpt, content, thumbnail, status, featured, category_id, tags } = req.body;
+    const { title, excerpt, content, thumbnail, status, featured, category_id, tags, user_id } = req.body;
     const slug = slugify(title, { lower: true, strict: true, locale: 'pt' });
+
+    // Aceita user_id do payload se válido; caso contrário usa o usuário autenticado
+    let authorId = req.user.id;
+    if (user_id) {
+      const targetUser = await User.findByPk(user_id);
+      if (targetUser) authorId = targetUser.id;
+    }
 
     const post = await Post.create({
       title,
@@ -135,7 +142,7 @@ exports.create = async (req, res, next) => {
       status: status || 'draft',
       featured: featured || false,
       category_id: category_id || null,
-      user_id: req.user.id,
+      user_id: authorId,
     });
 
     if (tags && Array.isArray(tags) && tags.length) {
