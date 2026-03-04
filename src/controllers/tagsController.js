@@ -21,6 +21,19 @@ exports.create = async (req, res, next) => {
   }
 };
 
+exports.update = async (req, res, next) => {
+  try {
+    const tag = await Tag.findByPk(req.params.id);
+    if (!tag) return res.status(404).json({ error: 'Tag não encontrada.' });
+    const { name } = req.body;
+    const slug = slugify(name, { lower: true, strict: true, locale: 'pt' });
+    await tag.update({ name, slug });
+    res.json({ data: tag });
+  } catch (err) {
+    next(err);
+  }
+};
+
 exports.destroy = async (req, res, next) => {
   try {
     const tag = await Tag.findByPk(req.params.id);

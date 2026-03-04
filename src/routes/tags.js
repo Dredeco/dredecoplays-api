@@ -15,6 +15,15 @@ router.post(
   tagsController.create
 );
 
+router.put(
+  '/:id',
+  authenticate,
+  requireAdmin,
+  [body('name').notEmpty().withMessage('Nome obrigatório.')],
+  validate,
+  tagsController.update
+);
+
 router.delete('/:id', authenticate, requireAdmin, tagsController.destroy);
 
 module.exports = router;

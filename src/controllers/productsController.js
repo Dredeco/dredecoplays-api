@@ -2,8 +2,13 @@ const { Product } = require('../models');
 
 exports.list = async (req, res, next) => {
   try {
+    const where = {};
+    const isAdmin = req.user?.role === 'admin';
+    if (!isAdmin || req.query.active !== 'false') {
+      where.active = true;
+    }
     const products = await Product.findAll({
-      where: { active: true },
+      where,
       order: [['created_at', 'DESC']],
     });
     res.json({ data: products });

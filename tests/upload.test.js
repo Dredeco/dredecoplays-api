@@ -2,58 +2,91 @@ const request = require('supertest');
 const path = require('path');
 const fs = require('fs');
 const app = require('../src/app');
+const { getAdminToken, createEditorAndGetToken, authHeaders, minimalPng } = require('./helpers');
 
 const UPLOAD_DIR = path.resolve(process.env.UPLOAD_DIR || 'public/uploads');
 
-async function getAdminToken() {
-  const res = await request(app).post('/api/auth/login').send({
-    email: 'admin@gamerzone.com.br',
-    password: 'Admin@123',
-  });
-  if (res.status !== 200) throw new Error('Login falhou: ' + JSON.stringify(res.body));
-  return res.body.token;
-}
-
-describe('Upload API - Thumbnails', () => {
+describe('Upload API', () => {
   let adminToken;
+  let editorToken;
   let uploadedFilename;
 
   beforeAll(async () => {
     adminToken = await getAdminToken();
+    const editor = await createEditorAndGetToken(adminToken);
+    editorToken = editor.token;
   });
 
   describe('POST /api/upload/image', () => {
-    it('deve retornar url válida e salvar arquivo em disco', async () => {
-      const minimalPng = Buffer.from(
-        'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',
-        'base64'
-      );
+    it('admin deve fazer upload e receber url válida', async () => {
       const res = await request(app)
         .post('/api/upload/image')
-        .set('Authorization', `Bearer ${adminToken}`)
+        .set(authHeaders(adminToken))
         .attach('image', minimalPng, 'pixel.png');
       expect(res.status).toBe(201);
       expect(res.body.data).toHaveProperty('url');
       expect(res.body.data).toHaveProperty('filename');
+      expect(res.body.data).toHaveProperty('path');
+      expect(res.body.data).toHaveProperty('size');
+      expect(res.body.data).toHaveProperty('mimetype');
       expect(res.body.data.url).toMatch(/\/uploads\/.+/);
-      expect(typeof res.body.data.filename).toBe('string');
-      expect(res.body.data.filename.length).toBeGreaterThan(0);
       uploadedFilename = res.body.data.filename;
       const filePath = path.join(UPLOAD_DIR, uploadedFilename);
       expect(fs.existsSync(filePath)).toBe(true);
     });
+
+    it('deve retornar 401 sem token', async () => {
+      const res = await request(app)
+        .post('/api/upload/image')
+        .attach('image', minimalPng, 'pixel.png');
+      expect(res.status).toBe(401);
+    });
+
+    it('editor deve ter acesso 403', async () => {
+      const res = await request(app)
+        .post('/api/upload/image')
+        .set(authHeaders(editorToken))
+        .attach('image', minimalPng, 'pixel.png');
+      expect(res.status).toBe(403);
+    });
+
+    it('deve retornar 400 sem arquivo', async () => {
+      const res = await request(app)
+        .post('/api/upload/image')
+        .set(authHeaders(adminToken));
+      expect(res.status).toBe(400);
+      expect(res.body).toHaveProperty('error');
+    });
+
+    it('deve retornar 400 para tipo de arquivo inválido', async () => {
+      const pdfBuffer = Buffer.from('%PDF-1.4 fake pdf content');
+      const res = await request(app)
+        .post('/api/upload/image')
+        .set(authHeaders(adminToken))
+        .attach('image', pdfBuffer, 'documento.pdf');
+      expect(res.status).toBe(400);
+      expect(res.body).toHaveProperty('error');
+      expect(res.body.error).toMatch(/não permitido|arquivo/i);
+    });
+
+    it('deve retornar 413 para arquivo acima do limite', async () => {
+      const maxSize = parseInt(process.env.MAX_FILE_SIZE) || 5 * 1024 * 1024;
+      const bigBuffer = Buffer.alloc(maxSize + 1024);
+      const res = await request(app)
+        .post('/api/upload/image')
+        .set(authHeaders(adminToken))
+        .attach('image', bigBuffer, 'bigfile.png');
+      expect(res.status).toBe(413);
+      expect(res.body).toHaveProperty('error');
+    });
   });
 
   describe('GET /uploads/:filename', () => {
-    it('deve retornar 200 para arquivo existente', async () => {
+    it('deve servir arquivo estático com 200', async () => {
       if (!uploadedFilename) {
-        const minimalPng = Buffer.from(
-          'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',
-          'base64'
-        );
         const uploadRes = await request(app)
           .post('/api/upload/image')
-          .set('Authorization', `Bearer ${adminToken}`)
+          .set(authHeaders(adminToken))
           .attach('image', minimalPng, 'pixel.png');
         uploadedFilename = uploadRes.body.data.filename;
       }

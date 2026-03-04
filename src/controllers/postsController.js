@@ -21,10 +21,11 @@ exports.list = async (req, res, next) => {
       where.status = status;
     }
 
-    if (search) {
+    const searchTerm = typeof search === 'string' ? search.trim().slice(0, 100) : '';
+    if (searchTerm) {
       where[Op.or] = [
-        { title: { [Op.like]: `%${search}%` } },
-        { excerpt: { [Op.like]: `%${search}%` } },
+        { title: { [Op.like]: `%${searchTerm}%` } },
+        { excerpt: { [Op.like]: `%${searchTerm}%` } },
       ];
     }
 
@@ -163,13 +164,19 @@ exports.update = async (req, res, next) => {
     if (!post) return res.status(404).json({ error: 'Post não encontrado.' });
 
     const { title, excerpt, content, thumbnail, status, featured, category_id, tags } = req.body;
-    const updates = { excerpt, content, thumbnail, status, featured, category_id };
+    const updates = {};
+    if (excerpt !== undefined) updates.excerpt = excerpt;
+    if (content !== undefined) updates.content = content;
+    if (thumbnail !== undefined) updates.thumbnail = thumbnail;
+    if (status !== undefined) updates.status = status;
+    if (featured !== undefined) updates.featured = featured;
+    if (category_id !== undefined) updates.category_id = category_id;
     if (title && title !== post.title) {
       updates.title = title;
       updates.slug = slugify(title, { lower: true, strict: true, locale: 'pt' });
     }
 
-    await post.update(updates);
+    if (Object.keys(updates).length > 0) await post.update(updates);
 
     if (tags && Array.isArray(tags)) {
       const tagInstances = await Tag.findAll({ where: { id: tags } });

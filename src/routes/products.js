@@ -4,7 +4,15 @@ const productsController = require('../controllers/productsController');
 const validate = require('../middlewares/validate');
 const { authenticate, requireAdmin } = require('../middlewares/auth');
 
-router.get('/', productsController.list);
+const optionalAuth = (req, res, next) => {
+  const authHeader = req.headers['authorization'];
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    return authenticate(req, res, next);
+  }
+  next();
+};
+
+router.get('/', optionalAuth, productsController.list);
 
 router.post(
   '/',

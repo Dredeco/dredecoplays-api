@@ -20,7 +20,9 @@ const fileFilter = (req, file, cb) => {
   if (allowed.includes(ext)) {
     cb(null, true);
   } else {
-    cb(new Error('Tipo de arquivo não permitido. Use: jpg, jpeg, png, gif ou webp.'));
+    const err = new Error('Tipo de arquivo não permitido. Use: jpg, jpeg, png, gif ou webp.');
+    err.status = 400;
+    cb(err);
   }
 };
 
