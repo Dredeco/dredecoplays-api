@@ -20,6 +20,7 @@ exports.uploadImage = async (req, res) => {
       },
     });
   } catch (err) {
+    console.error('[uploadController] Sharp error:', err.message);
     res.status(500).json({ error: 'Erro ao processar a imagem.' });
   }
 };
