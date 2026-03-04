@@ -14,6 +14,7 @@ exports.uploadImage = async (req, res) => {
     res.status(201).json({
       data: {
         url: base64,
+        path: null,
         size: compressed.length,
         mimetype: 'image/webp',
       },

@@ -73,6 +73,8 @@ Seguem o mesmo padrão CRUD com proteção JWT admin.
 | ------ | ----------------- | ----- | ---------------- |
 | POST   | /api/upload/image | Admin | Upload de imagem |
 
+As imagens são convertidas para WebP (quality 80) e armazenadas como base64 diretamente no banco (`posts.thumbnail`, `products.image`, `users.avatar`), evitando perda de dados a cada deploy. Os scripts `fresh` e `migrate:undo` estão protegidos e **não** podem ser executados em `NODE_ENV=production`.
+
 ## Parâmetros de Query - GET /api/posts
 
 | Parâmetro | Tipo   | Descrição                         |
@@ -115,9 +117,11 @@ No terminal SSH do cPanel:
 ```bash
 cd ~/public_html/api
 npm install --production
-npm run migrate
+NODE_ENV=production npm run migrate
 npm run seed
 ```
+
+**Importante:** A migration `20240007-images-to-base64.js` converte as colunas `posts.thumbnail`, `products.image` e `users.avatar` de `VARCHAR(255)` para `TEXT(medium)`, permitindo armazenar imagens em base64 diretamente no banco. Ela **deve** ser executada em produção antes do deploy do código que usa upload de imagens. Sem ela, as imagens seriam truncadas silenciosamente a 255 caracteres.
 
 ### 6. Iniciar a aplicação
 
