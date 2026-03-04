@@ -3,7 +3,6 @@ const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
 const morgan = require('morgan');
-const path = require('path');
 
 const errorHandler = require('./middlewares/errorHandler');
 
@@ -30,9 +29,6 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 if (process.env.NODE_ENV !== 'test') {
   app.use(morgan('dev'));
 }
-
-// Servir arquivos de upload como estáticos
-app.use('/uploads', express.static(path.resolve('public/uploads')));
 
 // Health check
 app.get('/api/health', (req, res) => {

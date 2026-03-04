@@ -25,16 +25,8 @@ module.exports = (sequelize) => {
       allowNull: false,
     },
     thumbnail: {
-      type: DataTypes.STRING(255),
+      type: DataTypes.TEXT('medium'),
       allowNull: true,
-      get() {
-        const value = this.getDataValue('thumbnail');
-        if (!value) return null;
-        if (value.startsWith('/uploads/') && process.env.BASE_URL) {
-          return process.env.BASE_URL.replace(/\/$/, '') + value;
-        }
-        return value;
-      },
     },
     status: {
       type: DataTypes.ENUM('draft', 'published'),

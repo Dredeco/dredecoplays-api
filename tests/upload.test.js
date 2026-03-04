@@ -1,15 +1,10 @@
 const request = require('supertest');
-const path = require('path');
-const fs = require('fs');
 const app = require('../src/app');
 const { getAdminToken, createEditorAndGetToken, authHeaders, minimalPng } = require('./helpers');
-
-const UPLOAD_DIR = path.resolve(process.env.UPLOAD_DIR || 'public/uploads');
 
 describe('Upload API', () => {
   let adminToken;
   let editorToken;
-  let uploadedFilename;
 
   beforeAll(async () => {
     adminToken = await getAdminToken();
@@ -18,21 +13,17 @@ describe('Upload API', () => {
   });
 
   describe('POST /api/upload/image', () => {
-    it('admin deve fazer upload e receber url válida', async () => {
+    it('admin deve fazer upload e receber base64 válido', async () => {
       const res = await request(app)
         .post('/api/upload/image')
         .set(authHeaders(adminToken))
         .attach('image', minimalPng, 'pixel.png');
       expect(res.status).toBe(201);
       expect(res.body.data).toHaveProperty('url');
-      expect(res.body.data).toHaveProperty('filename');
-      expect(res.body.data).toHaveProperty('path');
       expect(res.body.data).toHaveProperty('size');
       expect(res.body.data).toHaveProperty('mimetype');
-      expect(res.body.data.url).toMatch(/\/uploads\/.+/);
-      uploadedFilename = res.body.data.filename;
-      const filePath = path.join(UPLOAD_DIR, uploadedFilename);
-      expect(fs.existsSync(filePath)).toBe(true);
+      expect(res.body.data.url).toMatch(/^data:image\/webp;base64,[A-Za-z0-9+/=]+$/);
+      expect(res.body.data.mimetype).toBe('image/webp');
     });
 
     it('deve retornar 401 sem token', async () => {
@@ -78,20 +69,6 @@ describe('Upload API', () => {
         .attach('image', bigBuffer, 'bigfile.png');
       expect(res.status).toBe(413);
       expect(res.body).toHaveProperty('error');
-    });
-  });
-
-  describe('GET /uploads/:filename', () => {
-    it('deve servir arquivo estático com 200', async () => {
-      if (!uploadedFilename) {
-        const uploadRes = await request(app)
-          .post('/api/upload/image')
-          .set(authHeaders(adminToken))
-          .attach('image', minimalPng, 'pixel.png');
-        uploadedFilename = uploadRes.body.data.filename;
-      }
-      const res = await request(app).get(`/uploads/${uploadedFilename}`);
-      expect(res.status).toBe(200);
     });
   });
 });

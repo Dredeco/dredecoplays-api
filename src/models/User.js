@@ -27,7 +27,7 @@ module.exports = (sequelize) => {
       defaultValue: 'editor',
     },
     avatar: {
-      type: DataTypes.STRING(255),
+      type: DataTypes.TEXT('medium'),
       allowNull: true,
     },
   }, {

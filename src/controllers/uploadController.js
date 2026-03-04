@@ -1,20 +1,24 @@
-const path = require('path');
+const sharp = require('sharp');
 
-exports.uploadImage = (req, res) => {
+exports.uploadImage = async (req, res) => {
   if (!req.file) {
     return res.status(400).json({ error: 'Nenhum arquivo enviado.' });
   }
 
-  const baseUrl = process.env.BASE_URL || `${req.protocol}://${req.get('host')}`;
-  const filePath = `/uploads/${req.file.filename}`;
+  try {
+    const compressed = await sharp(req.file.buffer)
+      .webp({ quality: 80 })
+      .toBuffer();
+    const base64 = `data:image/webp;base64,${compressed.toString('base64')}`;
 
-  res.status(201).json({
-    data: {
-      filename: req.file.filename,
-      url: `${baseUrl}${filePath}`,
-      path: filePath,
-      size: req.file.size,
-      mimetype: req.file.mimetype,
-    },
-  });
+    res.status(201).json({
+      data: {
+        url: base64,
+        size: compressed.length,
+        mimetype: 'image/webp',
+      },
+    });
+  } catch (err) {
+    res.status(500).json({ error: 'Erro ao processar a imagem.' });
+  }
 };
