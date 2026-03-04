@@ -9,7 +9,7 @@ async function createDatabase() {
     password: process.env.DB_PASS || '',
   });
 
-  const db = process.env.DB_NAME || 'gamerzone_blog';
+  const db = process.env.DB_NAME || (process.env.NODE_ENV === 'test' ? 'gamerzone_blog_test' : 'gamerzone_blog');
   await conn.query(`CREATE DATABASE IF NOT EXISTS \`${db}\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci`);
   console.log(`Banco de dados "${db}" criado (ou já existia).`);
   await conn.end();

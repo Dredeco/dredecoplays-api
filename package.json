@@ -11,7 +11,11 @@
     "seed": "npx sequelize-cli db:seed:all",
     "seed:undo": "npx sequelize-cli db:seed:undo:all",
     "fresh": "npm run migrate:undo && npm run migrate && npm run seed",
-    "createdb": "node scripts/createdb.js"
+    "createdb": "node scripts/createdb.js",
+    "verify-thumbnails": "node scripts/verify-thumbnails.js",
+    "test-thumbnails-api": "node scripts/test-thumbnails-api.js",
+    "test": "cross-env NODE_ENV=test jest",
+    "test:prepare": "cross-env NODE_ENV=test node scripts/createdb.js && cross-env NODE_ENV=test npx sequelize-cli db:migrate && cross-env NODE_ENV=test npx sequelize-cli db:seed:undo:all && cross-env NODE_ENV=test npx sequelize-cli db:seed:all"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",
@@ -28,8 +32,11 @@
     "slugify": "^1.6.6"
   },
   "devDependencies": {
+    "cross-env": "^10.1.0",
+    "jest": "^30.2.0",
     "nodemon": "^3.1.0",
-    "sequelize-cli": "^6.6.2"
+    "sequelize-cli": "^6.6.2",
+    "supertest": "^7.2.2"
   },
   "engines": {
     "node": ">=18.0.0"
