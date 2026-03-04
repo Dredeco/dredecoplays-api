@@ -7,7 +7,10 @@
 require('dotenv').config();
 const sharp = require('sharp');
 
-const API = `http://localhost:${process.env.PORT || 3001}`;
+// Para testar API de produção: API_BASE_URL=https://api.dredecoplays.com.br node scripts/test-upload.js
+const API =
+  process.env.API_BASE_URL ||
+  `http://localhost:${process.env.PORT || 3001}`;
 
 function log(label, value) {
   if (typeof value === 'string' && value.length > 120) {
@@ -108,20 +111,24 @@ async function run() {
 
   // ── 4. Verificar coluna do banco ────────────────────────────────
   console.log('\n4. Verificando tipo da coluna posts.thumbnail no banco...');
-  const { Sequelize } = require('sequelize');
-  const config = require('../src/config/database');
-  const env = process.env.NODE_ENV || 'development';
-  const dbCfg = config[env];
-  const seq = new Sequelize(dbCfg.database, dbCfg.username, dbCfg.password, { ...dbCfg, logging: false });
-  const [rows] = await seq.query("DESCRIBE posts");
-  const thumbCol = rows.find((r) => r.Field === 'thumbnail');
-  log('thumbnail column type', thumbCol?.Type || 'não encontrado');
-  if (!thumbCol?.Type?.toLowerCase().includes('text')) {
-    console.error('  ❌ Coluna não é TEXT — execute: npm run migrate');
+  if (process.env.API_BASE_URL) {
+    console.log('  (testando API remota — checagem do banco feita no servidor local da API)');
   } else {
-    console.log('  ✅ Coluna é TEXT — OK para armazenar base64');
+    const { Sequelize } = require('sequelize');
+    const config = require('../src/config/database');
+    const env = process.env.NODE_ENV || 'development';
+    const dbCfg = config[env];
+    const seq = new Sequelize(dbCfg.database, dbCfg.username, dbCfg.password, { ...dbCfg, logging: false });
+    const [rows] = await seq.query("DESCRIBE posts");
+    const thumbCol = rows.find((r) => r.Field === 'thumbnail');
+    log('thumbnail column type', thumbCol?.Type || 'não encontrado');
+    if (!thumbCol?.Type?.toLowerCase().includes('text')) {
+      console.error('  ❌ Coluna não é TEXT — execute: npm run migrate:prod');
+    } else {
+      console.log('  ✅ Coluna é TEXT — OK para armazenar base64');
+    }
+    await seq.close();
   }
-  await seq.close();
 
   // ── 5. Buscar posts e checar thumbnails ─────────────────────────
   console.log('\n5. Buscando posts recentes e verificando thumbnails...');

@@ -121,7 +121,27 @@ NODE_ENV=production npm run migrate
 npm run seed
 ```
 
-**Importante:** A migration `20240007-images-to-base64.js` converte as colunas `posts.thumbnail`, `products.image` e `users.avatar` de `VARCHAR(255)` para `TEXT(medium)`, permitindo armazenar imagens em base64 diretamente no banco. Ela **deve** ser executada em produção antes do deploy do código que usa upload de imagens. Sem ela, as imagens são truncadas silenciosamente a 255 caracteres (base64 corrompido = ícone quebrado na interface). Se as thumbnails aparecem como ícone quebrado após o upload, execute `NODE_ENV=production npm run migrate` para aplicar a migration e depois reenvie as imagens dos posts afetados.
+**Importante:** A migration `20240007-images-to-base64.js` converte as colunas `posts.thumbnail`, `products.image` e `users.avatar` de `VARCHAR(255)` para `TEXT(medium)`, permitindo armazenar imagens em base64 diretamente no banco. Ela **deve** ser executada em produção:
+
+```bash
+npm run migrate:prod
+```
+
+Ou: `NODE_ENV=production npm run migrate`. Sem essa migration, as imagens são truncadas a 255 caracteres (base64 corrompido = ícone quebrado). Após aplicar, reenvie as thumbnails dos posts afetados pelo painel admin.
+
+### 6. Validar upload de imagens (opcional)
+
+No servidor de produção:
+
+```bash
+npm run test-upload
+```
+
+O script valida: login, upload de imagem, resposta base64 íntegra e tipo da coluna `thumbnail`. Para testar a API de produção a partir da sua máquina local:
+
+```bash
+API_BASE_URL=https://api.dredecoplays.com.br npm run test-upload
+```
 
 ### 6. Iniciar a aplicação
 
