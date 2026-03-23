@@ -1,6 +1,7 @@
 const router = require('express').Router();
 const { body } = require('express-validator');
 const postsController = require('../controllers/postsController');
+const seoController = require('../controllers/seoController');
 const validate = require('../middlewares/validate');
 const { authenticate, requireAdmin } = require('../middlewares/auth');
 
@@ -21,6 +22,7 @@ router.get('/', optionalAuth, postsController.list);
 router.get('/featured', postsController.featured);
 router.get('/popular', postsController.popular);
 router.get('/recent', postsController.recent);
+router.get('/:slug/seo', seoController.postSeo);
 router.get('/:slug', optionalAuth, postsController.show);
 
 router.post('/', authenticate, requireAdmin, postValidation, validate, postsController.create);

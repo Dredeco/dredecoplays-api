@@ -47,6 +47,7 @@ npm run dev
 | GET    | /api/posts/featured    | -     | Post em destaque        |
 | GET    | /api/posts/popular     | -     | Mais lidos              |
 | GET    | /api/posts/recent      | -     | Recentes                |
+| GET    | /api/posts/:slug/seo   | -     | Metadados SEO (JSON)    |
 | GET    | /api/posts/:slug       | -     | Post por slug           |
 | POST   | /api/posts             | Admin | Criar post              |
 | PUT    | /api/posts/:id         | Admin | Editar post             |
@@ -71,7 +72,63 @@ Seguem o mesmo padrão CRUD com proteção JWT admin.
 
 | Método | Rota              | Auth  | Descrição        |
 | ------ | ----------------- | ----- | ---------------- |
-| POST   | /api/upload/image | Admin | Upload de imagem |
+| POST   | /api/upload/image | Admin | Upload de imagem (gera original + WebP) |
+
+**Resposta `POST /api/upload/image` (201):**
+
+```json
+{
+  "data": {
+    "url": "https://api.dredecoplays.com.br/uploads/1234567890-123456.png",
+    "webpUrl": "https://api.dredecoplays.com.br/uploads/1234567890-123456.webp",
+    "width": 1200,
+    "height": 800
+  }
+}
+```
+
+Imagens com largura inferior a 1200px são ampliadas para 1200px (proporção mantida). É gerada uma variante `.webp` (PNG/JPG e demais formatos suportados). Envio já em WebP retorna o mesmo arquivo em `url` e `webpUrl`.
+
+### SEO (público)
+
+| Método | Rota           | Auth | Descrição                                      |
+| ------ | -------------- | ---- | ---------------------------------------------- |
+| GET    | /sitemap.xml   | -    | Sitemap XML (posts publicados + páginas fixas) |
+| GET    | /feed.xml      | -    | Feed RSS 2.0 (20 posts mais recentes)          |
+| GET    | /api/posts/:slug/seo | - | JSON para meta tags e JSON-LD no front-end |
+
+**Headers:** `sitemap.xml` — `Content-Type: application/xml`, `Cache-Control: public, max-age=3600`.  
+**Headers:** `feed.xml` — `Content-Type: application/rss+xml`, `Cache-Control: public, max-age=1800`.  
+**Headers:** `/api/posts/:slug/seo` — `Cache-Control: public, max-age=600`.
+
+**Exemplo `GET /api/posts/meu-post/seo` (200):**
+
+```json
+{
+  "title": "Título do post",
+  "description": "Resumo com até 160 caracteres…",
+  "slug": "meu-post",
+  "url": "https://dredecoplays.com.br/blog/meu-post",
+  "canonicalUrl": "https://dredecoplays.com.br/blog/meu-post",
+  "publishedAt": "2026-03-21T10:00:00.000Z",
+  "updatedAt": "2026-03-21T10:00:00.000Z",
+  "author": {
+    "name": "Nome do Autor",
+    "url": "https://dredecoplays.com.br/autor/nome-do-autor"
+  },
+  "category": { "name": "Guias & Dicas", "slug": "guias-dicas" },
+  "image": {
+    "url": "https://api.dredecoplays.com.br/uploads/imagem.jpg",
+    "width": 1200,
+    "height": 630,
+    "alt": "Título do post"
+  },
+  "readingTime": 6,
+  "tags": ["steam", "games"]
+}
+```
+
+`404` se o post não existir ou não estiver publicado.
 
 ## Parâmetros de Query - GET /api/posts
 

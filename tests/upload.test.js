@@ -25,14 +25,16 @@ describe('Upload API', () => {
         .attach('image', minimalPng, 'pixel.png');
       expect(res.status).toBe(201);
       expect(res.body.data).toHaveProperty('url');
-      expect(res.body.data).toHaveProperty('filename');
-      expect(res.body.data).toHaveProperty('path');
-      expect(res.body.data).toHaveProperty('size');
-      expect(res.body.data).toHaveProperty('mimetype');
+      expect(res.body.data).toHaveProperty('webpUrl');
+      expect(res.body.data).toHaveProperty('width');
+      expect(res.body.data).toHaveProperty('height');
       expect(res.body.data.url).toMatch(/\/uploads\/.+/);
-      uploadedFilename = res.body.data.filename;
+      expect(res.body.data.webpUrl).toMatch(/\/uploads\/.+\.webp$/);
+      uploadedFilename = path.basename(res.body.data.url);
       const filePath = path.join(UPLOAD_DIR, uploadedFilename);
       expect(fs.existsSync(filePath)).toBe(true);
+      const webpName = path.basename(res.body.data.webpUrl);
+      expect(fs.existsSync(path.join(UPLOAD_DIR, webpName))).toBe(true);
     });
 
     it('deve retornar 401 sem token', async () => {
@@ -88,7 +90,7 @@ describe('Upload API', () => {
           .post('/api/upload/image')
           .set(authHeaders(adminToken))
           .attach('image', minimalPng, 'pixel.png');
-        uploadedFilename = uploadRes.body.data.filename;
+        uploadedFilename = path.basename(uploadRes.body.data.url);
       }
       const res = await request(app).get(`/uploads/${uploadedFilename}`);
       expect(res.status).toBe(200);

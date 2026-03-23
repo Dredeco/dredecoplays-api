@@ -14,6 +14,7 @@ const tagsRoutes = require('./routes/tags');
 const productsRoutes = require('./routes/products');
 const uploadRoutes = require('./routes/upload');
 const usersRoutes = require('./routes/users');
+const seoRoutes = require('./routes/seo');
 
 const app = express();
 
@@ -22,8 +23,15 @@ if (process.env.NODE_ENV === 'production') {
   app.set('trust proxy', 1);
 }
 
-app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }));
-app.use(cors());
+app.use(
+  helmet({
+    crossOriginResourcePolicy: { policy: 'cross-origin' },
+    referrerPolicy: { policy: 'strict-origin-when-cross-origin' },
+  }),
+);
+const allowedOrigins =
+  process.env.NODE_ENV === 'production' ? ['https://dredecoplays.com.br'] : true;
+app.use(cors({ origin: allowedOrigins, credentials: true }));
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
@@ -38,6 +46,9 @@ app.use('/uploads', express.static(path.resolve('public/uploads')));
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
+
+// SEO: sitemap e feed RSS (rotas públicas na raiz)
+app.use('/', seoRoutes);
 
 // Rotas da API
 app.use('/api/auth', authRoutes);
