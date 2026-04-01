@@ -120,13 +120,14 @@ const postIncludes = [
 
 exports.sitemap = async (req, res, next) => {
   try {
-    const [posts, categories] = await Promise.all([
+    const [posts, categories, tags] = await Promise.all([
       Post.findAll({
         where: { status: 'published' },
         attributes: ['slug', 'updated_at', 'created_at'],
         order: [['updated_at', 'DESC']],
       }),
       Category.findAll({ attributes: ['slug'] }),
+      Tag.findAll({ attributes: ['slug'] }),
     ]);
 
     const thirtyDaysAgo = Date.now() - 30 * 24 * 60 * 60 * 1000;
@@ -154,6 +155,14 @@ exports.sitemap = async (req, res, next) => {
         loc: `${FRONTEND_URL}/categoria/${cat.slug}`,
         changefreq: 'weekly',
         priority: '0.8',
+      });
+    }
+
+    for (const tag of tags) {
+      urls.push({
+        loc: `${FRONTEND_URL}/tag/${tag.slug}`,
+        changefreq: 'weekly',
+        priority: '0.5',
       });
     }
 
