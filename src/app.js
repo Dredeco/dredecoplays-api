@@ -15,6 +15,8 @@ const productsRoutes = require('./routes/products');
 const uploadRoutes = require('./routes/upload');
 const usersRoutes = require('./routes/users');
 const seoRoutes = require('./routes/seo');
+const affiliateClicksRoutes = require('./routes/affiliateClicks');
+const hubsRoutes = require('./routes/hubs');
 
 const app = express();
 
@@ -58,6 +60,8 @@ app.use('/api/tags', tagsRoutes);
 app.use('/api/products', productsRoutes);
 app.use('/api/upload', uploadRoutes);
 app.use('/api/users', usersRoutes);
+app.use('/api/affiliate-clicks', affiliateClicksRoutes);
+app.use('/api/hubs', hubsRoutes);
 
 // 404
 app.use((req, res) => {

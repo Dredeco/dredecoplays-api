@@ -13,6 +13,7 @@ const optionalAuth = (req, res, next) => {
 };
 
 router.get('/', optionalAuth, productsController.list);
+router.get('/:id', optionalAuth, productsController.show);
 
 router.post(
   '/',

@@ -1,12 +1,42 @@
 const { Op } = require('sequelize');
 const slugify = require('slugify');
-const { Post, User, Category, Tag } = require('../models');
+const { Post, User, Category, Tag, Product } = require('../models');
 
 const postIncludes = [
   { model: User, as: 'author', attributes: ['id', 'name', 'avatar'] },
   { model: Category, as: 'category', attributes: ['id', 'name', 'slug', 'color'] },
   { model: Tag, as: 'tags', attributes: ['id', 'name', 'slug'], through: { attributes: [] } },
+  {
+    model: Product,
+    as: 'linkedProducts',
+    attributes: ['id', 'name', 'image', 'price', 'original_price', 'rating', 'affiliate_url', 'active', 'category'],
+    through: { attributes: ['sort_order'] },
+    required: false,
+  },
 ];
+
+async function syncLinkedProducts(post, linkedProductIds) {
+  if (linkedProductIds === undefined) return;
+  if (!Array.isArray(linkedProductIds)) return;
+  const ids = linkedProductIds
+    .map((id) => parseInt(id, 10))
+    .filter((n) => Number.isFinite(n) && n > 0);
+  if (ids.length === 0) {
+    await post.setLinkedProducts([]);
+    return;
+  }
+  const products = await Product.findAll({ where: { id: ids } });
+  const byId = new Map(products.map((p) => [p.id, p]));
+  const ordered = ids.map((id) => byId.get(id)).filter(Boolean);
+  await post.setLinkedProducts(ordered);
+  const sequelize = Post.sequelize;
+  for (let i = 0; i < ids.length; i++) {
+    await sequelize.query(
+      'UPDATE post_products SET sort_order = :sort WHERE post_id = :postId AND product_id = :productId',
+      { replacements: { sort: i, postId: post.id, productId: ids[i] } },
+    );
+  }
+}
 
 exports.list = async (req, res, next) => {
   try {
@@ -124,7 +154,7 @@ exports.show = async (req, res, next) => {
 
 exports.create = async (req, res, next) => {
   try {
-    const { title, excerpt, content, thumbnail, status, featured, category_id, tags, user_id } = req.body;
+    const { title, excerpt, content, thumbnail, status, featured, category_id, tags, user_id, linked_product_ids, faq_json, video_json, howto_json } = req.body;
     const slug = slugify(title, { lower: true, strict: true, locale: 'pt' });
 
     // Aceita user_id do payload se válido; caso contrário usa o usuário autenticado
@@ -144,11 +174,18 @@ exports.create = async (req, res, next) => {
       featured: featured || false,
       category_id: category_id || null,
       user_id: authorId,
+      faq_json: faq_json ?? null,
+      video_json: video_json ?? null,
+      howto_json: howto_json ?? null,
     });
 
     if (tags && Array.isArray(tags) && tags.length) {
       const tagInstances = await Tag.findAll({ where: { id: tags } });
       await post.setTags(tagInstances);
+    }
+
+    if (linked_product_ids !== undefined) {
+      await syncLinkedProducts(post, linked_product_ids);
     }
 
     const full = await Post.findByPk(post.id, { include: postIncludes });
@@ -163,7 +200,7 @@ exports.update = async (req, res, next) => {
     const post = await Post.findByPk(req.params.id);
     if (!post) return res.status(404).json({ error: 'Post não encontrado.' });
 
-    const { title, excerpt, content, thumbnail, status, featured, category_id, tags } = req.body;
+    const { title, excerpt, content, thumbnail, status, featured, category_id, tags, linked_product_ids, faq_json, video_json, howto_json } = req.body;
     const updates = {};
     if (excerpt !== undefined) updates.excerpt = excerpt;
     if (content !== undefined) updates.content = content;
@@ -171,6 +208,9 @@ exports.update = async (req, res, next) => {
     if (status !== undefined) updates.status = status;
     if (featured !== undefined) updates.featured = featured;
     if (category_id !== undefined) updates.category_id = category_id;
+    if (faq_json !== undefined) updates.faq_json = faq_json;
+    if (video_json !== undefined) updates.video_json = video_json;
+    if (howto_json !== undefined) updates.howto_json = howto_json;
     if (title && title !== post.title) {
       updates.title = title;
       updates.slug = slugify(title, { lower: true, strict: true, locale: 'pt' });
@@ -181,6 +221,10 @@ exports.update = async (req, res, next) => {
     if (tags && Array.isArray(tags)) {
       const tagInstances = await Tag.findAll({ where: { id: tags } });
       await post.setTags(tagInstances);
+    }
+
+    if (linked_product_ids !== undefined) {
+      await syncLinkedProducts(post, linked_product_ids);
     }
 
     const full = await Post.findByPk(post.id, { include: postIncludes });

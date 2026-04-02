@@ -56,6 +56,18 @@ module.exports = (sequelize) => {
       type: DataTypes.INTEGER.UNSIGNED,
       allowNull: true,
     },
+    faq_json: {
+      type: DataTypes.TEXT('long'),
+      allowNull: true,
+    },
+    video_json: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+    },
+    howto_json: {
+      type: DataTypes.TEXT('long'),
+      allowNull: true,
+    },
   }, {
     tableName: 'posts',
     indexes: [
