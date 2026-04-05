@@ -68,6 +68,18 @@ module.exports = (sequelize) => {
       type: DataTypes.TEXT('long'),
       allowNull: true,
     },
+    instagram_media_id: {
+      type: DataTypes.STRING(64),
+      allowNull: true,
+    },
+    instagram_published_at: {
+      type: DataTypes.DATE,
+      allowNull: true,
+    },
+    instagram_last_error: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+    },
   }, {
     tableName: 'posts',
     indexes: [

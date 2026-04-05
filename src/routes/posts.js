@@ -26,6 +26,7 @@ router.get('/:slug/seo', seoController.postSeo);
 router.get('/:slug', optionalAuth, postsController.show);
 
 router.post('/', authenticate, requireAdmin, postValidation, validate, postsController.create);
+router.post('/:id/instagram-publish', authenticate, requireAdmin, postsController.publishInstagram);
 router.put('/:id', authenticate, requireAdmin, postsController.update);
 router.delete('/:id', authenticate, requireAdmin, postsController.destroy);
 router.patch('/:id/publish', authenticate, requireAdmin, postsController.publish);

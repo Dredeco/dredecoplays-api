@@ -1,6 +1,7 @@
 const { Op } = require('sequelize');
 const slugify = require('slugify');
 const { Post, User, Category, Tag, Product } = require('../models');
+const { publishPostToInstagram } = require('../services/instagramPublishService');
 
 const postIncludes = [
   { model: User, as: 'author', attributes: ['id', 'name', 'avatar'] },
@@ -253,6 +254,51 @@ exports.publish = async (req, res, next) => {
     await post.update({ status: newStatus });
     res.json({ data: { id: post.id, status: newStatus } });
   } catch (err) {
+    next(err);
+  }
+};
+
+/** Publicação manual no Instagram (admin). */
+exports.publishInstagram = async (req, res, next) => {
+  try {
+    const post = await Post.findByPk(req.params.id, { include: postIncludes });
+    if (!post) return res.status(404).json({ error: 'Post não encontrado.' });
+    if (post.status !== 'published') {
+      return res.status(400).json({ error: 'Publique o artigo antes de enviar ao Instagram.' });
+    }
+    if (post.getDataValue('instagram_media_id')) {
+      return res.status(409).json({ error: 'Este post já foi publicado no Instagram.' });
+    }
+
+    const result = await publishPostToInstagram(post);
+    if (result.skipped) {
+      const reason = result.reason;
+      if (reason === 'already_published') {
+        return res.status(409).json({ error: 'Este post já foi publicado no Instagram.' });
+      }
+      const msg =
+        reason === 'missing_token_or_ig_user_id'
+          ? 'Instagram não configurado no servidor (INSTAGRAM_ACCESS_TOKEN / INSTAGRAM_BUSINESS_ACCOUNT_ID).'
+          : 'Não foi possível publicar no Instagram.';
+      return res.status(503).json({ error: msg, reason });
+    }
+
+    await post.reload();
+    res.json({
+      data: {
+        instagram_media_id: post.instagram_media_id,
+        instagram_published_at: post.instagram_published_at,
+      },
+    });
+  } catch (err) {
+    try {
+      const post = await Post.findByPk(req.params.id);
+      if (post) {
+        await post.update({ instagram_last_error: String(err.message).slice(0, 2000) });
+      }
+    } catch (_) {
+      /* ignore */
+    }
     next(err);
   }
 };
