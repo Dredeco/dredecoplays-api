@@ -3,9 +3,9 @@ const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
 const morgan = require('morgan');
-const path = require('path');
 
 const errorHandler = require('./middlewares/errorHandler');
+const { resolveUploadDir } = require('./config/uploadDir');
 
 const authRoutes = require('./routes/auth');
 const postsRoutes = require('./routes/posts');
@@ -51,8 +51,11 @@ if (process.env.NODE_ENV !== 'test') {
   app.use(morgan('dev'));
 }
 
-// Servir arquivos de upload como estáticos
-app.use('/uploads', express.static(path.resolve('public/uploads')));
+// Servir arquivos de upload como estáticos (mesmo diretório do controller)
+app.use(
+  '/uploads',
+  express.static(resolveUploadDir(), { maxAge: '30d', immutable: true }),
+);
 
 // Health check
 app.get('/api/health', (req, res) => {

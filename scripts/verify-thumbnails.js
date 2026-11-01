@@ -1,20 +1,18 @@
 require('dotenv').config();
-const path = require('path');
 const fs = require('fs');
 const { sequelize, Post } = require('../src/models');
+const {
+  resolveUploadDir,
+  filenameFromUploadsUrl,
+  thumbnailDiskPath,
+} = require('../src/config/uploadDir');
 
-const UPLOAD_DIR = path.resolve(process.env.UPLOAD_DIR || 'public/uploads');
-
-function extractFilenameFromThumbnail(thumbnail) {
-  if (!thumbnail || typeof thumbnail !== 'string') return null;
-  // thumbnail pode ser: /uploads/123-456.jpg ou https://host/uploads/123-456.jpg
-  const match = thumbnail.match(/\/uploads\/([^/?]+)/);
-  return match ? match[1] : null;
-}
+const UPLOADS_IN_CONTENT_RE = /\/uploads\/[^"'\s)>]+/g;
 
 async function verifyThumbnails() {
+  const uploadDir = resolveUploadDir();
   console.log('=== Diagnóstico de Thumbnails ===\n');
-  console.log('Diretório de uploads:', UPLOAD_DIR);
+  console.log('Diretório de uploads:', uploadDir);
   console.log('');
 
   try {
@@ -25,36 +23,56 @@ async function verifyThumbnails() {
   }
 
   const posts = await Post.findAll({
-    attributes: ['id', 'title', 'thumbnail', 'slug'],
+    attributes: ['id', 'title', 'thumbnail', 'slug', 'content'],
     raw: true,
   });
 
   const withoutThumbnail = [];
   const missingFile = [];
   const ok = [];
+  const missingInContent = [];
 
   for (const post of posts) {
     if (!post.thumbnail || post.thumbnail.trim() === '') {
       withoutThumbnail.push(post);
-      continue;
+    } else {
+      const filename = filenameFromUploadsUrl(post.thumbnail);
+      if (!filename) {
+        missingFile.push({ ...post, reason: 'URL/caminho inválido' });
+      } else {
+        const filePath = thumbnailDiskPath(post.thumbnail);
+        if (!filePath || !fs.existsSync(filePath)) {
+          missingFile.push({
+            ...post,
+            reason: 'Arquivo não encontrado',
+            expectedPath: filePath,
+          });
+        } else {
+          ok.push(post);
+        }
+      }
     }
 
-    const filename = extractFilenameFromThumbnail(post.thumbnail);
-    if (!filename) {
-      missingFile.push({ ...post, reason: 'URL/caminho inválido' });
-      continue;
+    const content = post.content || '';
+    const matches = content.match(UPLOADS_IN_CONTENT_RE) || [];
+    const seen = new Set();
+    for (const match of matches) {
+      const filename = filenameFromUploadsUrl(match);
+      if (!filename || seen.has(filename)) continue;
+      seen.add(filename);
+      const filePath = thumbnailDiskPath(match);
+      if (!filePath || !fs.existsSync(filePath)) {
+        missingInContent.push({
+          id: post.id,
+          title: post.title,
+          slug: post.slug,
+          ref: match,
+          expectedPath: filePath,
+        });
+      }
     }
-
-    const filePath = path.join(UPLOAD_DIR, filename);
-    if (!fs.existsSync(filePath)) {
-      missingFile.push({ ...post, reason: 'Arquivo não encontrado', expectedPath: filePath });
-      continue;
-    }
-
-    ok.push(post);
   }
 
-  // Relatório
   console.log('--- Posts sem thumbnail no DB ---');
   if (withoutThumbnail.length === 0) {
     console.log('Nenhum.');
@@ -73,6 +91,17 @@ async function verifyThumbnails() {
     });
   }
 
+  console.log('\n--- Imagens citadas no HTML sem arquivo no disco ---');
+  if (missingInContent.length === 0) {
+    console.log('Nenhum.');
+  } else {
+    missingInContent.forEach((p) => {
+      console.log(`  [${p.id}] ${p.title}`);
+      console.log(`       ref: ${p.ref}`);
+      console.log(`       esperado: ${p.expectedPath || '(inválido)'}`);
+    });
+  }
+
   console.log('\n--- Posts OK (thumbnail presente e arquivo existe) ---');
   if (ok.length === 0) {
     console.log('Nenhum.');
@@ -83,11 +112,15 @@ async function verifyThumbnails() {
   console.log('\n=== Resumo ===');
   console.log(`Total de posts: ${posts.length}`);
   console.log(`Sem thumbnail: ${withoutThumbnail.length}`);
-  console.log(`Arquivo ausente: ${missingFile.length}`);
+  console.log(`Arquivo ausente (thumbnail): ${missingFile.length}`);
+  console.log(`Arquivo ausente (HTML): ${missingInContent.length}`);
   console.log(`OK: ${ok.length}`);
 
   await sequelize.close();
-  const hasProblems = missingFile.length > 0 || (posts.length > 0 && withoutThumbnail.length === posts.length);
+  const hasProblems =
+    missingFile.length > 0 ||
+    missingInContent.length > 0 ||
+    (posts.length > 0 && withoutThumbnail.length === posts.length);
   process.exit(hasProblems ? 1 : 0);
 }
 

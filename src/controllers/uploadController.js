@@ -1,7 +1,6 @@
 const path = require('path');
 const sharp = require('sharp');
-
-const uploadDir = path.resolve(process.env.UPLOAD_DIR || 'public/uploads');
+const { resolveUploadDir } = require('../config/uploadDir');
 
 exports.uploadImage = async (req, res, next) => {
   try {
@@ -9,6 +8,7 @@ exports.uploadImage = async (req, res, next) => {
       return res.status(400).json({ error: 'Nenhum arquivo enviado.' });
     }
 
+    const uploadDir = resolveUploadDir();
     const baseUrl = process.env.BASE_URL || `${req.protocol}://${req.get('host')}`;
     const baseUrlClean = baseUrl.replace(/\/$/, '');
 

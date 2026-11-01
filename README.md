@@ -161,11 +161,45 @@ No cPanel da Hostinger, crie um banco MySQL e anote as credenciais.
 
 Faça upload de todos os arquivos (exceto `node_modules/` e `.env`) via FTP ou Git.
 
-### 4. Configurar variáveis de ambiente
+### 4. Pasta persistente de imagens (obrigatório em produção)
 
-No painel Node.js do cPanel, adicione as variáveis do `.env.example` com os valores de produção.
+O deploy Node da Hostinger **substitui a pasta do app**. Arquivos em `public/uploads` dentro do application root somem. Em produção a API **recusa subir** se `UPLOAD_DIR` estiver dentro dessa pasta.
 
-### 5. Instalar dependências e rodar migrations
+Antes do primeiro restart com o código novo:
+
+1. Veja se ainda há arquivos em `<app>/public/uploads`. Se o último deploy já esvaziou, não há o que copiar — posts quebrados só voltam com reupload no painel.
+2. Crie a pasta fora do app:
+
+```bash
+mkdir -p "$HOME/persistent/dredecoplays-uploads"
+```
+
+3. Se o passo 1 achou arquivos:
+
+```bash
+cp -a <caminho-do-app>/public/uploads/. "$HOME/persistent/dredecoplays-uploads/"
+```
+
+4. No **painel Node.js** da Hostinger (não só no `.env` dentro do app — o painel sobrevive ao deploy), defina:
+
+```text
+UPLOAD_DIR=/home/<usuario>/persistent/dredecoplays-uploads
+```
+
+Use o caminho absoluto (`pwd` do diretório), não `~/`.
+
+5. Só então faça deploy/restart do código novo.
+6. Confirme: `GET https://api.dredecoplays.com.br/uploads/<arquivo-conhecido>` → 200.
+7. No SSH, na pasta da API: `node scripts/verify-thumbnails.js` (lista thumbnail e `<img>` do HTML sem arquivo no disco).
+8. Opcional: `node scripts/test-thumbnails-api.js` contra a URL de produção.
+
+Backup recomendado: cópia periódica dessa pasta (`tar`/cron ou backup do hPanel), separada do código. Deploy **não** deve limpar `UPLOAD_DIR`.
+
+### 5. Configurar variáveis de ambiente
+
+No painel Node.js do cPanel, adicione as variáveis do `.env.example` com os valores de produção — incluindo `UPLOAD_DIR` absoluto fora do application root.
+
+### 6. Instalar dependências e rodar migrations
 
 No terminal SSH do cPanel:
 
@@ -176,7 +210,7 @@ npm run migrate
 npm run seed
 ```
 
-### 6. Iniciar a aplicação
+### 7. Iniciar a aplicação
 
 Clique em **Start** no painel Node.js do cPanel.
 
@@ -184,14 +218,14 @@ Clique em **Start** no painel Node.js do cPanel.
 
 ```
 ├── src/
-│   ├── config/          # Configurações de DB e JWT
+│   ├── config/          # DB, JWT e uploadDir (fonte única de UPLOAD_DIR)
 │   ├── controllers/     # Lógica dos endpoints
 │   ├── middlewares/     # Auth, validação, upload, erros
 │   ├── models/          # Models Sequelize
 │   └── routes/          # Definição das rotas
 ├── migrations/          # Migrations do banco
 ├── seeders/             # Dados iniciais
-├── public/uploads/      # Imagens enviadas
+├── public/uploads/      # Padrão só em development/test
 ├── server.js            # Entry point
 └── .env.example         # Exemplo de variáveis
 ```

@@ -1,9 +1,9 @@
 const multer = require('multer');
 const path = require('path');
-const fs = require('fs');
+const { resolveUploadDir } = require('../config/uploadDir');
 
-const uploadDir = path.resolve(process.env.UPLOAD_DIR || 'public/uploads');
-if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
+// Falha cedo no boot se UPLOAD_DIR for inválido (ex.: dentro do app em produção).
+resolveUploadDir();
 
 const storage = multer.memoryStorage();
 

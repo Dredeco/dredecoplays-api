@@ -1,7 +1,7 @@
-const path = require('path');
 const fs = require('fs');
 const sharp = require('sharp');
 const { Post, User, Category, Tag } = require('../models');
+const { thumbnailDiskPath } = require('../config/uploadDir');
 
 const FRONTEND_URL = (process.env.FRONTEND_URL || 'https://dredecoplays.com.br').replace(/\/$/, '');
 const SITE_LOGO_URL = process.env.SITE_LOGO_URL || `${FRONTEND_URL}/logo.png`;
@@ -96,20 +96,6 @@ function absoluteThumbnailUrl(thumbnail, req) {
   const base = getApiBaseUrl(req);
   if (t.startsWith('/')) return `${base}${t}`;
   return `${base}/uploads/${t.replace(/^\//, '')}`;
-}
-
-/** Caminho em disco para `public/uploads/...` a partir do valor bruto ou URL da API */
-function resolveThumbnailDiskPath(thumbnailRaw, apiBase) {
-  if (!thumbnailRaw) return null;
-  const t = String(thumbnailRaw);
-  let rel = t;
-  const base = apiBase.replace(/\/$/, '');
-  if (t.startsWith('http://') || t.startsWith('https://')) {
-    if (!t.startsWith(base)) return null;
-    rel = t.slice(base.length) || '';
-  }
-  if (!rel.startsWith('/uploads/')) return null;
-  return path.join(process.cwd(), 'public', rel.replace(/^\//, ''));
 }
 
 const postIncludes = [
@@ -274,13 +260,12 @@ exports.postSeo = async (req, res, next) => {
 
     const description = buildMetaDescription(post);
     const link = `${FRONTEND_URL}/blog/${post.slug}`;
-    const apiBase = getApiBaseUrl(req);
     const rawThumb = post.getDataValue('thumbnail');
     const imageUrl = rawThumb ? absoluteThumbnailUrl(rawThumb, req) : null;
 
     let imageWidth = 1200;
     let imageHeight = 630;
-    const diskPath = resolveThumbnailDiskPath(rawThumb, apiBase);
+    const diskPath = thumbnailDiskPath(rawThumb);
     if (diskPath && fs.existsSync(diskPath)) {
       try {
         const meta = await sharp(diskPath).metadata();

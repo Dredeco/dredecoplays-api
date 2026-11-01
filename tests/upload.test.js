@@ -2,9 +2,8 @@ const request = require('supertest');
 const path = require('path');
 const fs = require('fs');
 const app = require('../src/app');
+const { resolveUploadDir } = require('../src/config/uploadDir');
 const { getAdminToken, createEditorAndGetToken, authHeaders, minimalPng } = require('./helpers');
-
-const UPLOAD_DIR = path.resolve(process.env.UPLOAD_DIR || 'public/uploads');
 
 describe('Upload API', () => {
   let adminToken;
@@ -31,10 +30,11 @@ describe('Upload API', () => {
       expect(res.body.data.url).toMatch(/\/uploads\/.+/);
       expect(res.body.data.webpUrl).toMatch(/\/uploads\/.+\.webp$/);
       uploadedFilename = path.basename(res.body.data.url);
-      const filePath = path.join(UPLOAD_DIR, uploadedFilename);
+      const uploadDir = resolveUploadDir();
+      const filePath = path.join(uploadDir, uploadedFilename);
       expect(fs.existsSync(filePath)).toBe(true);
       const webpName = path.basename(res.body.data.webpUrl);
-      expect(fs.existsSync(path.join(UPLOAD_DIR, webpName))).toBe(true);
+      expect(fs.existsSync(path.join(uploadDir, webpName))).toBe(true);
     });
 
     it('deve retornar 401 sem token', async () => {
